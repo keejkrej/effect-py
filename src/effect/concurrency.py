@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Any, TypeVar, cast
+from dataclasses import dataclass
+from typing import Any, Never, TypeVar, cast
 
 from effect._internal import core as internal
 from effect._internal.core import Effect, async_, fail_cause, gen, succeed
-from effect.exit import Failure, Success
+from effect.data import TaggedError
+from effect.exit import Exit, Failure, Success
 from effect.fiber import Fiber
 
 A = TypeVar("A")
@@ -138,3 +140,143 @@ def zip_par(left: Effect[A, E, R], right: Effect[B, E2, R2]) -> Effect[tuple[A, 
     return internal.flat_map(
         all([left, right], concurrency=True), lambda results: succeed(tuple(results))
     )
+
+
+@dataclass(eq=False, kw_only=True)
+class TimeoutException(TaggedError):
+    _tag = "TimeoutException"
+    message: str = "The operation timed out"
+
+
+def sleep(seconds: float) -> Effect[None, Never, Never]:
+    def sleep_register(resume):
+        loop_event = asyncio.get_running_loop()
+        task = loop_event.call_later(seconds, lambda: resume(succeed(None)))
+        if hasattr(resume, "on_cancel"):
+            resume.on_cancel(lambda: task.cancel())
+
+    return async_(sleep_register)
+
+
+def _from_exit(exit_val: Exit[Any, Any]) -> Effect[Any, Any, Any]:
+    if isinstance(exit_val, Success):
+        return succeed(exit_val.value)
+    else:
+        return fail_cause(exit_val.cause)
+
+
+def race_first(
+    left: Effect[A, E, R],
+    right: Effect[B, E2, R2],
+) -> Effect[A | B, E | E2, R | R2]:
+    from effect.deferred import deferred_make
+    from effect.fiber import fork
+
+    @gen
+    def run():
+        fiber1 = yield fork(left)
+        fiber2 = yield fork(right)
+
+        deferred = yield deferred_make()
+        winner_determined = False
+
+        @gen
+        def handle_completion(winner: Fiber[Any, Any], loser: Fiber[Any, Any]):
+            nonlocal winner_determined
+            if winner_determined:
+                return
+            winner_determined = True
+            yield fork(loser.interrupt())
+            winner_exit = yield winner.await_exit()
+            yield deferred.done(winner_exit)
+
+        @gen
+        def monitor_fiber1():
+            yield fiber1.await_exit()
+            yield handle_completion(fiber1, fiber2)
+
+        @gen
+        def monitor_fiber2():
+            yield fiber2.await_exit()
+            yield handle_completion(fiber2, fiber1)
+
+        yield fork(monitor_fiber1())
+        yield fork(monitor_fiber2())
+
+        res = yield deferred.await_()
+        return res
+
+    return run()
+
+
+def race(
+    left: Effect[A, E, R],
+    right: Effect[B, E2, R2],
+) -> Effect[A | B, E | E2, R | R2]:
+    from effect.deferred import deferred_make
+    from effect.fiber import fork
+
+    @gen
+    def run():
+        fiber1 = yield fork(left)
+        fiber2 = yield fork(right)
+
+        deferred = yield deferred_make()
+        f1_exit: Exit[Any, Any] | None = None
+        f2_exit: Exit[Any, Any] | None = None
+        winner_determined = False
+
+        @gen
+        def handle_f1():
+            nonlocal f1_exit, winner_determined
+            exit_val = yield fiber1.await_exit()
+            f1_exit = exit_val
+            if isinstance(exit_val, Success):
+                if not winner_determined:
+                    winner_determined = True
+                    yield fork(fiber2.interrupt())
+                    yield deferred.done(exit_val)
+            else:
+                if f2_exit is not None and not winner_determined:
+                    winner_determined = True
+                    yield deferred.done(exit_val)
+
+        @gen
+        def handle_f2():
+            nonlocal f2_exit, winner_determined
+            exit_val = yield fiber2.await_exit()
+            f2_exit = exit_val
+            if isinstance(exit_val, Success):
+                if not winner_determined:
+                    winner_determined = True
+                    yield fork(fiber1.interrupt())
+                    yield deferred.done(exit_val)
+            else:
+                if f1_exit is not None and not winner_determined:
+                    winner_determined = True
+                    yield deferred.done(exit_val)
+
+        yield fork(handle_f1())
+        yield fork(handle_f2())
+
+        res = yield deferred.await_()
+        return res
+
+    return run()
+
+
+def timeout(
+    self: Effect[A, E, R],
+    seconds: float,
+) -> Effect[A, E | TimeoutException, R]:
+    @gen
+    def run():
+        @gen
+        def timer_effect():
+            yield sleep(seconds)
+            return (yield internal.fail(TimeoutException()))
+
+        res = yield race_first(self, timer_effect())
+        return res
+
+    return run()

@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from threading import Lock
 from typing import Generic, Never, TypeVar
 
-from effect.effect import Effect, sync
+from effect._internal.core import Effect, sync
 
 A = TypeVar("A")
 B = TypeVar("B")

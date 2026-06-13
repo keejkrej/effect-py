@@ -4,12 +4,14 @@ from collections.abc import Callable
 from typing import Never, TypeVar, cast
 
 from effect._internal import core as internal
+from effect.concurrency import TimeoutException, race, race_first, sleep, timeout, zip_par
 from effect.concurrency import all as all_effect
 from effect.concurrency import zip as zip_effect
-from effect.concurrency import zip_par
 from effect.deferred import Deferred, deferred_make
 from effect.exit import Exit
 from effect.fiber import Fiber, fork
+from effect.fiber_ref import FiberRef
+from effect.fiber_ref import make as fiber_ref_make
 from effect.function_ import LazyArg, dual, pipe
 from effect.logger import (
     Logger,
@@ -26,6 +28,8 @@ from effect.pubsub import PubSub, pubsub_make
 from effect.queue import Queue, queue_make
 from effect.schedule import Schedule, exponential, recurs, repeat, retry, spaced
 from effect.semaphore import Semaphore, semaphore_make
+from effect.synchronized_ref import SynchronizedRef
+from effect.synchronized_ref import make as synchronized_ref_make
 
 A = TypeVar("A")
 E = TypeVar("E")
@@ -121,6 +125,8 @@ __all__ = [
     "fail",
     "fail_cause",
     "Fiber",
+    "FiberRef",
+    "fiber_ref_make",
     "flat_map",
     "fork",
     "gen",
@@ -146,6 +152,8 @@ __all__ = [
     "pubsub_make",
     "Queue",
     "queue_make",
+    "race",
+    "race_first",
     "recurs",
     "repeat",
     "retry",
@@ -156,12 +164,17 @@ __all__ = [
     "Schedule",
     "Semaphore",
     "semaphore_make",
+    "sleep",
     "spaced",
     "succeed",
     "suspend",
     "sync",
+    "SynchronizedRef",
+    "synchronized_ref_make",
     "tag",
     "tap",
+    "timeout",
+    "TimeoutException",
     "try_",
     "YieldWrap",
     "zip",
