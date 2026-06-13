@@ -11,6 +11,7 @@ requires-python = ">=3.12"
 dependencies = [
     "effect",
     "torch>=2.0",
+    "torchvision>=0.15",
 ]
 
 [tool.hatch.build.targets.wheel]
