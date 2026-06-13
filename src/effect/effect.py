@@ -4,8 +4,14 @@ from collections.abc import Callable
 from typing import Never, TypeVar, cast
 
 from effect._internal import core as internal
+from effect.concurrency import all as all_effect
+from effect.concurrency import zip as zip_effect
+from effect.concurrency import zip_par
+from effect.deferred import Deferred, deferred_make
 from effect.exit import Exit
+from effect.fiber import Fiber, fork
 from effect.function_ import LazyArg, dual, pipe
+from effect.queue import Queue, queue_make
 
 A = TypeVar("A")
 E = TypeVar("E")
@@ -38,6 +44,9 @@ provide_context = dual(2, internal.provide_context)
 provide_some_context = dual(2, internal.provide_some_context)
 provide_service = dual(3, internal.provide_service)
 AsyncFiberException = internal.AsyncFiberException
+
+all = all_effect
+zip = zip_effect
 
 
 def try_(thunk: LazyArg[A]) -> Effect[A, Exception, Never]:
@@ -85,16 +94,21 @@ __all__ = [
     "AsyncFiberException",
     "Effect",
     "YieldWrap",
+    "all",
     "async_",
     "catch_all",
     "catch_all_cause",
     "catch_if",
     "catch_tag",
     "context",
+    "Deferred",
+    "deferred_make",
     "die",
     "fail",
     "fail_cause",
+    "Fiber",
     "flat_map",
+    "fork",
     "gen",
     "is_effect",
     "map",
@@ -105,6 +119,8 @@ __all__ = [
     "provide_context",
     "provide_service",
     "provide_some_context",
+    "Queue",
+    "queue_make",
     "run_async",
     "run_async_exit",
     "run_sync",
@@ -115,4 +131,6 @@ __all__ = [
     "tap",
     "tag",
     "try_",
+    "zip",
+    "zip_par",
 ]

@@ -13,6 +13,7 @@ from effect._internal.runtime_env import (
 )
 from effect.cause import Cause, failure_or_cause
 from effect.cause import fail as cause_fail
+from effect.cause import interrupt as cause_interrupt
 from effect.context import Context, ServiceNotFoundError, Tag, merge, unsafe_get
 from effect.either import Left, Right
 from effect.exit import Exit, Failure, Success
@@ -381,7 +382,10 @@ def _run_exit(effect: Effect[A, E, R], *, allow_async: bool) -> Exit[A, E]:
         raise RuntimeError(msg)
 
 
-async def _run_exit_async(effect: Effect[A, E, R]) -> Exit[A, E]:
+async def _run_exit_async(
+    effect: Effect[A, E, R],
+    fiber: Any | None = None,
+) -> Exit[A, E]:
     current: Effect[Any, Any, Any] | Exit[Any, Any] = effect
 
     while True:
@@ -408,21 +412,21 @@ async def _run_exit_async(effect: Effect[A, E, R]) -> Exit[A, E]:
             continue
 
         if op == OpCodes.OP_ON_SUCCESS:
-            inner_exit = await _run_exit_async(current.effect_instruction_i0)
+            inner_exit = await _run_exit_async(current.effect_instruction_i0, fiber=fiber)
             if isinstance(inner_exit, Failure):
                 return inner_exit
             current = current.effect_instruction_i1(inner_exit.value)
             continue
 
         if op == OpCodes.OP_ON_FAILURE:
-            inner_exit = await _run_exit_async(current.effect_instruction_i0)
+            inner_exit = await _run_exit_async(current.effect_instruction_i0, fiber=fiber)
             if isinstance(inner_exit, Success):
                 return inner_exit
             current = current.effect_instruction_i1(inner_exit.cause)
             continue
 
         if op == OpCodes.OP_ON_SUCCESS_AND_FAILURE:
-            inner_exit = await _run_exit_async(current.effect_instruction_i0)
+            inner_exit = await _run_exit_async(current.effect_instruction_i0, fiber=fiber)
             if isinstance(inner_exit, Failure):
                 current = current.effect_instruction_i1(inner_exit.cause)
             else:
@@ -430,7 +434,7 @@ async def _run_exit_async(effect: Effect[A, E, R]) -> Exit[A, E]:
             continue
 
         if op == OpCodes.OP_ITERATOR:
-            return await _run_iterator_async(current.effect_instruction_i0)
+            return await _run_iterator_async(current.effect_instruction_i0, fiber=fiber)
 
         if op == OpCodes.OP_TAG:
             try:
@@ -443,7 +447,7 @@ async def _run_exit_async(effect: Effect[A, E, R]) -> Exit[A, E]:
         if op == OpCodes.OP_WITH_CONTEXT:
             token = set_context(current.effect_instruction_i1)
             try:
-                return await _run_exit_async(current.effect_instruction_i0)
+                return await _run_exit_async(current.effect_instruction_i0, fiber=fiber)
             finally:
                 reset_context(token)
 
@@ -451,20 +455,28 @@ async def _run_exit_async(effect: Effect[A, E, R]) -> Exit[A, E]:
             merged = merge(current_context(), current.effect_instruction_i1)
             token = set_context(merged)
             try:
-                return await _run_exit_async(current.effect_instruction_i0)
+                return await _run_exit_async(current.effect_instruction_i0, fiber=fiber)
             finally:
                 reset_context(token)
 
         if op == OpCodes.OP_ON_EXIT:
-            inner_exit = await _run_exit_async(current.effect_instruction_i0)
-            cleanup_exit = await _run_exit_async(current.effect_instruction_i1(inner_exit))
+            inner_exit = await _run_exit_async(current.effect_instruction_i0, fiber=fiber)
+            cleanup_exit = await _run_exit_async(
+                current.effect_instruction_i1(inner_exit),
+                fiber=fiber,
+            )
             if isinstance(cleanup_exit, Failure):
                 return cleanup_exit
             return inner_exit
 
         if op == OpCodes.OP_ASYNC:
+            if fiber and fiber._interrupted:
+                current = fail_cause(cause_interrupt())
+                continue
+
             loop = asyncio.get_running_loop()
             future: asyncio.Future[Effect[Any, Any, Any]] = loop.create_future()
+            cancel_callback = None
 
             def resume(
                 cont: Effect[Any, Any, Any],
@@ -473,8 +485,29 @@ async def _run_exit_async(effect: Effect[A, E, R]) -> Exit[A, E]:
                 if not pending.done():
                     pending.set_result(cont)
 
+            def on_cancel(cb: Callable[[], None]) -> None:
+                nonlocal cancel_callback
+                cancel_callback = cb
+
+            setattr(resume, "on_cancel", on_cancel)
+
             current.effect_instruction_i0(resume)
-            current = await future
+
+            if fiber:
+                fiber._active_future = future
+
+            try:
+                current = await future
+            except asyncio.CancelledError:
+                if cancel_callback:
+                    import contextlib
+
+                    with contextlib.suppress(Exception):
+                        cancel_callback()
+                current = fail_cause(cause_interrupt())
+            finally:
+                if fiber:
+                    fiber._active_future = None
             continue
 
         msg = f"Unsupported async op: {op}"
@@ -516,6 +549,7 @@ def _run_iterator(
 
 async def _run_iterator_async(
     iterator: Generator[YieldWrap | Effect[Any, Any, Any], Any, Any],
+    fiber: Any | None = None,
 ) -> Exit[Any, Any]:
     send_value: object = None
     while True:
@@ -539,7 +573,7 @@ async def _run_iterator_async(
             msg = f"Expected Effect from generator, got {type(yielded)!r}"
             raise TypeError(msg)
 
-        child_exit = await _run_exit_async(child)
+        child_exit = await _run_exit_async(child, fiber=fiber)
         if isinstance(child_exit, Failure):
             return child_exit
         send_value = child_exit.value

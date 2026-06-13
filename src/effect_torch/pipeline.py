@@ -5,8 +5,8 @@ from dataclasses import dataclass
 from typing import Any, Never, TypeVar, cast
 
 import effect as Effect
-from effect.effect import fail, gen, succeed, suspend
 from effect.data import TaggedError
+from effect.effect import fail, gen, succeed, suspend
 from effect_torch.device import Device
 from effect_torch.errors import AutogradError, CudaError, ShapeError
 from effect_torch.rng import Rng
