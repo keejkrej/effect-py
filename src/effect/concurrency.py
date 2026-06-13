@@ -5,7 +5,7 @@ from typing import Any, TypeVar, cast
 
 from effect._internal import core as internal
 from effect._internal.core import Effect, async_, fail_cause, gen, succeed
-from effect.exit import Failure, Success, is_success
+from effect.exit import Failure, Success
 from effect.fiber import Fiber
 
 A = TypeVar("A")

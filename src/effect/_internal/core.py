@@ -489,7 +489,7 @@ async def _run_exit_async(
                 nonlocal cancel_callback
                 cancel_callback = cb
 
-            setattr(resume, "on_cancel", on_cancel)
+            cast(Any, resume).on_cancel = on_cancel
 
             current.effect_instruction_i0(resume)
 

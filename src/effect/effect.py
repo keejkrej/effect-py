@@ -11,7 +11,21 @@ from effect.deferred import Deferred, deferred_make
 from effect.exit import Exit
 from effect.fiber import Fiber, fork
 from effect.function_ import LazyArg, dual, pipe
+from effect.logger import (
+    Logger,
+    LoggerTag,
+    MockLogger,
+    PrintLogger,
+    log,
+    log_debug,
+    log_error,
+    log_info,
+    log_warning,
+)
+from effect.pubsub import PubSub, pubsub_make
 from effect.queue import Queue, queue_make
+from effect.schedule import Schedule, exponential, recurs, repeat, retry, spaced
+from effect.semaphore import Semaphore, semaphore_make
 
 A = TypeVar("A")
 E = TypeVar("E")
@@ -91,11 +105,9 @@ def provide(
 
 
 __all__ = [
-    "AsyncFiberException",
-    "Effect",
-    "YieldWrap",
     "all",
     "async_",
+    "AsyncFiberException",
     "catch_all",
     "catch_all_cause",
     "catch_if",
@@ -104,6 +116,8 @@ __all__ = [
     "Deferred",
     "deferred_make",
     "die",
+    "Effect",
+    "exponential",
     "fail",
     "fail_cause",
     "Fiber",
@@ -111,26 +125,45 @@ __all__ = [
     "fork",
     "gen",
     "is_effect",
+    "log",
+    "log_debug",
+    "log_error",
+    "log_info",
+    "log_warning",
+    "Logger",
+    "LoggerTag",
     "map",
     "match_effect",
+    "MockLogger",
     "on_exit",
     "pipe",
+    "PrintLogger",
     "provide",
     "provide_context",
     "provide_service",
     "provide_some_context",
+    "PubSub",
+    "pubsub_make",
     "Queue",
     "queue_make",
+    "recurs",
+    "repeat",
+    "retry",
     "run_async",
     "run_async_exit",
     "run_sync",
     "run_sync_exit",
+    "Schedule",
+    "Semaphore",
+    "semaphore_make",
+    "spaced",
     "succeed",
     "suspend",
     "sync",
-    "tap",
     "tag",
+    "tap",
     "try_",
+    "YieldWrap",
     "zip",
     "zip_par",
 ]
