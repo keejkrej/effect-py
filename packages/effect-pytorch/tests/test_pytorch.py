@@ -6,12 +6,12 @@ import effect as Effect
 from effect import pipe, run_sync
 from effect.layer import merge as merge_layers
 from effect.layer import provide_to
-from effect_torch.device import Device
-from effect_torch.device import live as live_device
-from effect_torch.errors import ShapeError
-from effect_torch.pipeline import MatmulPipelineInput, matmul, matmul_pipeline
-from effect_torch.rng import Rng
-from effect_torch.rng import live as live_rng
+from effect_pytorch.device import Device
+from effect_pytorch.device import live as live_device
+from effect_pytorch.errors import ShapeError
+from effect_pytorch.pipeline import MatmulPipelineInput, matmul, matmul_pipeline
+from effect_pytorch.rng import Rng
+from effect_pytorch.rng import live as live_rng
 
 torch = pytest.importorskip("torch")
 

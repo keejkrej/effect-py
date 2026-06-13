@@ -3,15 +3,16 @@ requires = ["hatchling>=1.21.0"]
 build-backend = "hatchling.build"
 
 [project]
-name = "effect"
+name = "effect-workspace"
 version = "0.1.0"
-description = "A Python port of Effect-TS — typed functional effects"
+description = "Monorepo workspace for effect-py ecosystem"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = []
 
-[project.optional-dependencies]
-torch = ["torch>=2.0"]
+[tool.uv]
+package = false
+workspace = { members = ["packages/*"] }
 
 [dependency-groups]
 dev = [
@@ -20,22 +21,31 @@ dev = [
     "ruff>=0.9",
     "ty>=0.0.1a19",
 ]
-torch = [
-    "torch>=2.0",
-]
-
-[tool.hatch.build.targets.wheel]
-packages = ["src/effect", "src/effect_torch"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
-pythonpath = ["src"]
+testpaths = [
+    "packages/effect/tests",
+    "packages/effect-numpy/tests",
+    "packages/effect-pytorch/tests",
+]
+pythonpath = [
+    "packages/effect/src",
+    "packages/effect-numpy/src",
+    "packages/effect-pytorch/src",
+]
 asyncio_mode = "auto"
 
 [tool.ruff]
 line-length = 100
 target-version = "py312"
-src = ["src", "tests"]
+src = [
+    "packages/effect/src",
+    "packages/effect/tests",
+    "packages/effect-numpy/src",
+    "packages/effect-numpy/tests",
+    "packages/effect-pytorch/src",
+    "packages/effect-pytorch/tests",
+]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "SIM"]
@@ -44,4 +54,11 @@ select = ["E", "F", "I", "B", "SIM"]
 python-version = "3.12"
 
 [tool.ty.src]
-include = ["src", "tests"]
+include = [
+    "packages/effect/src",
+    "packages/effect/tests",
+    "packages/effect-numpy/src",
+    "packages/effect-numpy/tests",
+    "packages/effect-pytorch/src",
+    "packages/effect-pytorch/tests",
+]

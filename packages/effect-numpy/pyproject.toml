@@ -1,0 +1,20 @@
+[build-system]
+requires = ["hatchling>=1.21.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "effect-numpy"
+version = "0.1.0"
+description = "Effect-py wrappers for NumPy API"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "effect",
+    "numpy>=1.20",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/effect_numpy"]
+
+[tool.uv.sources]
+effect = { workspace = true }

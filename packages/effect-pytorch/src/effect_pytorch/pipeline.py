@@ -7,9 +7,9 @@ from typing import Any, Never, TypeVar, cast
 import effect as Effect
 from effect.data import TaggedError
 from effect.effect import fail, gen, succeed, suspend
-from effect_torch.device import Device
-from effect_torch.errors import AutogradError, CudaError, ShapeError
-from effect_torch.rng import Rng
+from effect_pytorch.device import Device
+from effect_pytorch.errors import AutogradError, CudaError, ShapeError
+from effect_pytorch.rng import Rng
 
 A = TypeVar("A")
 
@@ -111,7 +111,7 @@ def matmul_pipeline(spec: MatmulPipelineInput):
 
 def live_layer(device: str = "cpu", seed: int = 0):
     from effect.layer import merge as merge_layers
-    from effect_torch.device import live as live_device
-    from effect_torch.rng import live as live_rng
+    from effect_pytorch.device import live as live_device
+    from effect_pytorch.rng import live as live_rng
 
     return merge_layers(live_device(device), live_rng(seed))

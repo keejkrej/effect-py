@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import effect as Effect
 from effect import pipe, run_sync
-from effect_torch import MatmulPipelineInput, live_layer, matmul_pipeline
+from effect_pytorch import MatmulPipelineInput, live_layer, matmul_pipeline
 
 
 def main() -> None:
